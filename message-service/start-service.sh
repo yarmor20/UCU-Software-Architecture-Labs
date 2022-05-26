@@ -1,0 +1,1 @@
+uvicorn message_server:app --workers 1 --reload --port ${1}

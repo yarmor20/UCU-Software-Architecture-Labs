@@ -1,0 +1,1 @@
+uvicorn facade_server:app --workers 1 --reload --port ${1}
