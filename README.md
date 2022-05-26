@@ -1,8 +1,9 @@
-# Lab #1: Microservice Basics
+# Lab #2: Hazelcast Basics
 
 | Labs | Completion Status |
 | -- | -- |
-| lab1 | ✅ |
+| Lab #1: Microservice Basics | ✅ |
+| Lab #2: Hazelcast Basics | ✅ |
 
 ### Run Project
 ```bash
