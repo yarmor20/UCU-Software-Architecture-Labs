@@ -6,7 +6,7 @@ POST http://localhost:8080/add_message
 Content-Type: application/json
 
 {
-  "message": "Some Message!"
+  "message": "msg10"
 }
 
 ### Wrong data type. Will FAIL!

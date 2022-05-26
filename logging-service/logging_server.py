@@ -3,11 +3,20 @@ from fastapi.responses import JSONResponse
 from __constants import *
 from __logger import logger
 from __utils import *
+import hazelcast
 
 
 # Start FastAPI server.
 app = FastAPI(title=str.capitalize(LOGGING_SERVICE_NAME))
-MESSAGES_MAP = dict()
+
+
+# Start the Hazelcast Client and connect to an already running Hazelcast Cluster on 127.0.0.1.
+client = hazelcast.HazelcastClient(cluster_members=[
+    "127.0.0.1:5701",
+    "127.0.0.1:5702",
+    "127.0.0.1:5703"
+])
+MESSAGES_MAP = client.get_map(DISTRIBUTED_MAP_NAME).blocking()
 
 
 @app.exception_handler(Exception)
@@ -38,7 +47,7 @@ async def add_message(msg: dict):
     """
     # Insert message into a dict.
     uuid, msg = list(msg.items())[0]
-    MESSAGES_MAP[uuid] = msg
+    MESSAGES_MAP.put(uuid, msg)
 
     logger.info(f"(LOGGING) Message received: [{msg}]")
 

@@ -6,6 +6,7 @@ from __constants import *
 import uuid
 import httpx
 import asyncio
+import random
 
 
 async def get(client: httpx.AsyncClient, url: str):
@@ -26,13 +27,14 @@ async def post(client: httpx.AsyncClient, url: str, msg: dict):
 
 async def _get_messages():
     """
-    Get all messages from logging-service and response
-    on GET request from messages-service.
+    Get all messages from Logging-Service (LS).
+    Send also GET request to Message-Service (MS).
 
-    :return: Concatenated responses from services in JSON format
+    :return: (JSONResponse) - concatenated responses from LS and MS.
     """
     # Get all urls for logging & message services.
-    logging_service_url = LOGGING_SERVICE_URL + LOGGING_SERVICE_GET_MSGS_ENDPOINT
+    logging_service_url = random.choice([LOGGING_SERVICE_URL_1, LOGGING_SERVICE_URL_2, LOGGING_SERVICE_URL_3])
+    logging_service_url = logging_service_url + LOGGING_SERVICE_GET_MSGS_ENDPOINT
     message_service_url = MESSAGE_SERVICE_URL + MESSAGE_SERVICE_GET_MSGS_ENDPOINT
 
     # Send async GET request to microservices.
@@ -65,7 +67,8 @@ async def _get_messages():
 
 async def _add_message(msg: str):
     # Get logging service url.
-    url = LOGGING_SERVICE_URL + LOGGING_SERVICE_ADD_MSG_ENDPOINT
+    logging_service_url = random.choice([LOGGING_SERVICE_URL_1, LOGGING_SERVICE_URL_2, LOGGING_SERVICE_URL_3])
+    url = logging_service_url + LOGGING_SERVICE_ADD_MSG_ENDPOINT
 
     # Send async POST request.
     try:
@@ -75,9 +78,10 @@ async def _add_message(msg: str):
     except Exception as err:
         responses = [{"_status_code": STATUS_ERROR, "error": err}]
 
-    logger.info(f"(FACADE->LOGGING) Request: [POST] Response Body: [{responses}]")
     if responses[0]["_status_code"] == STATUS_OK:
         response = json_response_template(status=STATUS_OK, msg="OK")
     else:
         response = json_response_template(status=STATUS_ERROR, msg="ERROR")
+
+    logger.info(f"(FACADE->LOGGING) Request: [POST] Response Body: [{response}]")
     return JSONResponse(status_code=STATUS_OK, content=response)
