@@ -1,16 +1,16 @@
-GET http://localhost:8080/get_messages
+GET http://localhost:8081/get_messages
 Accept: text/json
 
 ###
-POST http://localhost:8080/add_message
+POST http://localhost:8081/add_message
 Content-Type: application/json
 
 {
-  "message": "msg1"
+  "message": "A test message! (O_o)"
 }
 
 ### Wrong data type. Will FAIL!
-POST http://localhost:8080/add_message
+POST http://localhost:8081/add_message
 Content-Type: application/json
 
 {
@@ -20,7 +20,7 @@ Content-Type: application/json
 }
 
 ###
-GET http://localhost:8080/get_messages
+GET http://localhost:8081/get_messages
 Accept: text/json
 
 ###

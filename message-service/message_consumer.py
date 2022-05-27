@@ -1,6 +1,7 @@
 from aiokafka import AIOKafkaConsumer
 from __logger import logger
 from __constants import *
+from __utils import *
 
 import uuid
 import json
@@ -14,16 +15,23 @@ MESSAGES_MAP = dict()
 kafka_loop = asyncio.get_event_loop()
 
 
-async def consume_messages():
+async def consume_messages(cclient) -> None:
     """
     Consume messages from Kafka topic and save them in RAM.
+
+    :param cclient: (consul.Client) - Consul client agent.
     """
+    # Get Kafka configurations from Consul KV storage.
+    broker = get_consul_value(cclient, key=KAFKA_BROKER_KEY)
+    consumer_group = get_consul_value(cclient, key=KAFKA_CONSUMER_GROUP_KEY)
+    topic = get_consul_value(cclient, key=MESSAGE_SERVICE_KAFKA_TOPIC_KEY)
+
     # Initialize a Kafka consumer.
     consumer = AIOKafkaConsumer(
-        MESSAGE_SERVICE_KAFKA_TOPIC,
+        topic,
         loop=kafka_loop,
-        bootstrap_servers=[KAFKA_BROKER],
-        group_id=KAFKA_CONSUMER_GROUP
+        bootstrap_servers=[broker],
+        group_id=consumer_group
     )
 
     # Start consuming.

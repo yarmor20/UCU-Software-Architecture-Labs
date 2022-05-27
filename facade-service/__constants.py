@@ -1,23 +1,39 @@
-# Facade-Service (FS) constants.
+import dotenv
+import uuid
+import os
+
+
+# Load dotenv.
+dotenv.load_dotenv(dotenv_path="./facade-service.env")
+
+# Service identifier variables.
+SERVICE_HOST = os.getenv("HOST")
+SERVICE_PORT = int(os.getenv("PORT"))
+SERVICE_NAME = "facade-service"
+SERVICE_ID = f"{SERVICE_NAME}-{uuid.uuid1().__str__()}"
+
+# Other service names.
 FACADE_SERVICE_NAME = "facade-service"
+LOGGING_SERVICE_NAME = "logging-service"
+MESSAGE_SERVICE_NAME = "message-service"
 
-# Multiple Message-Service URLs.
-MESSAGE_SERVICE_URL_1 = 'http://localhost:8081/message-svc/api/v1.0'
-MESSAGE_SERVICE_URL_2 = 'http://localhost:8082/message-svc/api/v1.0'
+# Consul.
+CONSUL_CLIENT_HOST = "127.0.0.1"
+CONSUL_CLIENT_PORT = 8500
 
-# Multiple Logging-Service Instances URLs.
-LOGGING_SERVICE_URL_1 = 'http://localhost:8083/logging-svc/api/v1.0'
-LOGGING_SERVICE_URL_2 = 'http://localhost:8084/logging-svc/api/v1.0'
-LOGGING_SERVICE_URL_3 = 'http://localhost:8085/logging-svc/api/v1.0'
+# Consul KV Keys.
+LOGGING_SERVICE_API_ROOT_ENDPOINT_KEY = "logging-service/api-root-path"
+LOGGING_SERVICE_GET_MSGS_ENDPOINT_KEY = "logging-service/get-msgs-endpoint"
+LOGGING_SERVICE_ADD_MSG_ENDPOINT_KEY = "logging-service/add-msg-endpoint"
 
-# Service Endpoints.
-GET_MSGS_ENDPOINT = '/get_messages'
-ADD_MSG_ENDPOINT = '/add_message'
+MESSAGE_SERVICE_API_ROOT_ENDPOINT_KEY = "message-service/api-root-path"
+MESSAGE_SERVICE_GET_MSGS_ENDPOINT_KEY = "message-service/get-msgs-endpoint"
+
+KAFKA_BROKER_KEY = "kafka/kafka-broker"
+MESSAGE_SERVICE_KAFKA_TOPIC_KEY = "kafka/messages-svc-topic"
 
 # Kafka.
 KAFKA_PRODUCER_NAME = "FacadeProducer"
-KAFKA_BROKER = "127.0.0.1:9092"
-MESSAGE_SERVICE_KAFKA_TOPIC = "MessageServiceTopic"
 
 # Response statuses.
 STATUS_OK = 200

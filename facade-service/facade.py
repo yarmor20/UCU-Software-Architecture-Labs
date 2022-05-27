@@ -8,6 +8,7 @@ import uuid
 import httpx
 import asyncio
 import random
+import consul
 
 
 async def get(client: httpx.AsyncClient, url: str) -> dict:
@@ -37,19 +38,20 @@ async def post(client: httpx.AsyncClient, url: str, msg: dict) -> dict:
     return response.json()
 
 
-async def _get_messages() -> JSONResponse:
+async def _get_messages(cclient: consul.Consul) -> JSONResponse:
     """
     Get all messages from Logging-Service (LS).
     Send also GET request to Message-Service (MS).
 
+    :param cclient: (consul.Consul) - Consul agent client.
     :return: (JSONResponse) - concatenated responses from LS and MS.
     """
-    # Get random url for logging & message services.
-    logging_service_url = random.choice([LOGGING_SERVICE_URL_1, LOGGING_SERVICE_URL_2, LOGGING_SERVICE_URL_3])
-    logging_service_url += GET_MSGS_ENDPOINT
-
-    message_service_url = random.choice([MESSAGE_SERVICE_URL_1, MESSAGE_SERVICE_URL_2])
-    message_service_url += GET_MSGS_ENDPOINT
+    # Get random url for logging service.
+    logging_service_url = random.choice(get_service_urls(cclient, LOGGING_SERVICE_NAME))
+    logging_service_url += get_consul_value(cclient, key=LOGGING_SERVICE_GET_MSGS_ENDPOINT_KEY)
+    # Get random url for message service.
+    message_service_url = random.choice(get_service_urls(cclient, MESSAGE_SERVICE_NAME))
+    message_service_url += get_consul_value(cclient, key=MESSAGE_SERVICE_GET_MSGS_ENDPOINT_KEY)
 
     # Send async GET request to microservices.
     try:
@@ -58,6 +60,8 @@ async def _get_messages() -> JSONResponse:
             responses = await asyncio.gather(*tasks)
     except Exception as err:
         responses = [{"component": "UNKNOWN", "_status_code": STATUS_ERROR, "response": {}, "error": err}]
+
+    logger.info(f"(FACADE<-ALL) Method: [GET] Responses: [{[resp['_status_code'] for resp in responses]}]")
 
     # Return both responses to user in a concatenated form.
     final_response_message = ""
@@ -79,16 +83,17 @@ async def _get_messages() -> JSONResponse:
     return JSONResponse(content=response, status_code=STATUS_OK)
 
 
-async def __add_logging_service_message(msg: str) -> dict:
+async def __add_logging_service_message(cclient: consul.Consul, msg: str) -> dict:
     """
     Send a message via Logging-Service endpoint.
 
+    :param cclient: (consul.Consul) - Consul agent client.
     :param msg: (str) - message to be sent.
     :return: (dict) - server response.
     """
-    # Get logging service url.
-    logging_service_url = random.choice([LOGGING_SERVICE_URL_1, LOGGING_SERVICE_URL_2, LOGGING_SERVICE_URL_3])
-    logging_service_url += ADD_MSG_ENDPOINT
+    # Get random url for logging service.
+    logging_service_url = random.choice(get_service_urls(cclient, LOGGING_SERVICE_NAME))
+    logging_service_url += get_consul_value(cclient, key=LOGGING_SERVICE_ADD_MSG_ENDPOINT_KEY)
 
     # Send async POST request.
     try:
@@ -102,35 +107,41 @@ async def __add_logging_service_message(msg: str) -> dict:
     return responses
 
 
-async def __add_message_service_message(msg: str) -> int:
+async def __add_message_service_message(cclient: consul.Consul, msg: str) -> int:
     """
     Send a message via Kafka producer to the target Kafka topic.
 
+    :param cclient: (consul.Consul) - Consul agent client.
     :param msg: (str) - message to be sent.
     :return: (int) - status code.
     """
+    # Get Kafka broker and topic to send messages to.
+    broker = get_consul_value(cclient, key=KAFKA_BROKER_KEY)
+    topic = get_consul_value(cclient, key=MESSAGE_SERVICE_KAFKA_TOPIC_KEY)
+
     try:
         # Create a Kafka producer instance to send message to kafka topic.
-        producer = ServiceProducer(logger_name=KAFKA_PRODUCER_NAME, broker=KAFKA_BROKER)
+        producer = ServiceProducer(logger_name=KAFKA_PRODUCER_NAME, broker=broker)
 
         # Send a message to the topic, which is read by consumer group from Message service side
-        await producer.send(topic=MESSAGE_SERVICE_KAFKA_TOPIC, message={"message": msg})
+        await producer.send(topic=topic, message={"message": msg})
         return STATUS_OK
     except Exception as err:
         logger.error(f"(FACADE->MESSAGE) Failed to send message via Kafka Producer. Error: [{err}]")
         return STATUS_ERROR
 
 
-async def _add_message(msg: str) -> JSONResponse:
+async def _add_message(cclient: consul.Consul, msg: str) -> JSONResponse:
     """
     Send message to both Logging-Service and Message-Service.
 
+    :param cclient: (consul.Consul) - Consul agent client.
     :param msg: (str) - message to be sent.
     :return: (JSONResponse) - responses from LS and MS.
     """
     # Add message to both logging and message services.
-    log_svc_response = await __add_logging_service_message(msg)
-    msg_svc_response = await __add_message_service_message(msg)
+    log_svc_response = await __add_logging_service_message(cclient, msg)
+    msg_svc_response = await __add_message_service_message(cclient, msg)
 
     if log_svc_response[0]["_status_code"] == STATUS_OK and msg_svc_response == STATUS_OK:
         status = STATUS_OK

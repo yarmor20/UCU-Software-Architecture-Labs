@@ -4,19 +4,29 @@ from __constants import *
 from __logger import logger
 from __utils import *
 import hazelcast
+import consul
 
 
 # Start FastAPI server.
 app = FastAPI(title=str.capitalize(LOGGING_SERVICE_NAME))
 
+# Configure Consul agent client.
+cclient = consul.Consul(
+    host=CONSUL_CLIENT_HOST,
+    port=CONSUL_CLIENT_PORT
+)
 
-# Start the Hazelcast Client and connect to an already running Hazelcast Cluster on 127.0.0.1.
-client = hazelcast.HazelcastClient(cluster_members=[
-    "127.0.0.1:5701",
-    "127.0.0.1:5702",
-    "127.0.0.1:5703"
-])
-MESSAGES_MAP = client.get_map(DISTRIBUTED_MAP_NAME).blocking()
+# Register a new instance of service in Consul.
+cclient.agent.service.register(
+    name=SERVICE_NAME,
+    service_id=SERVICE_ID,
+    address=SERVICE_HOST,
+    port=SERVICE_PORT
+)
+
+# Start the Hazelcast Client and connect to an already running Hazelcast Cluster.
+hzclient = hazelcast.HazelcastClient(cluster_members=get_service_urls(cclient, HAZELCAST_NODE_ADDRESSES_KEY))
+MESSAGES_MAP = hzclient.get_map(get_consul_value(cclient, key=HAZELCAST_DISTRIBUTED_MAP_NAME_KEY)).blocking()
 
 
 @app.exception_handler(Exception)
@@ -25,7 +35,7 @@ def exception_handler(request: Request, err):
     return JSONResponse(status_code=STATUS_ERROR, content={"message": msg})
 
 
-@app.get("/logging-svc/api/v1.0/get_messages", response_class=JSONResponse)
+@app.get("/logging-service/api/v1.0/get_messages", response_class=JSONResponse)
 async def get_messages():
     """
     Get all messages from the in-memory map.
@@ -37,7 +47,7 @@ async def get_messages():
     return JSONResponse(content=response, status_code=STATUS_OK)
 
 
-@app.post("/logging-svc/api/v1.0/add_message")
+@app.post("/logging-service/api/v1.0/add_message")
 async def add_message(msg: dict):
     """
     Add a message to the global in-memory map.
@@ -46,10 +56,16 @@ async def add_message(msg: dict):
     :return: (JSONResponse) - response status.
     """
     # Insert message into a dict.
-    uuid, msg = list(msg.items())[0]
-    MESSAGES_MAP.put(uuid, msg)
+    uuid_, msg = list(msg.items())[0]
+    MESSAGES_MAP.put(uuid_, msg)
 
     logger.info(f"(LOGGING) Message received: [{msg}]")
 
     response = json_response_template(status=STATUS_OK, msg="OK")
     return JSONResponse(content=response, status_code=STATUS_OK)
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    print("(CONSUL) This service is being deregistered...")
+    cclient.agent.service.deregister(SERVICE_ID)
