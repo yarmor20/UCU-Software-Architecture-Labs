@@ -2,7 +2,7 @@
 LOGGING_SERVICE_NAME = "logging-service"
 
 # Hazelcast constants.
-DISTRIBUTED_MAP_NAME = "lab3_distributed_map"
+DISTRIBUTED_MAP_NAME = "lab4_distributed_map"
 
 # Response statuses.
 STATUS_OK = 200

@@ -26,7 +26,7 @@ def exception_handler(request: Request, err):
 
 
 @app.get("/logging-svc/api/v1.0/get_messages", response_class=JSONResponse)
-async def get_messages(request: Request):
+async def get_messages():
     """
     Get all messages from the in-memory map.
 
